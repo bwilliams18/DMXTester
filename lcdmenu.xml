@@ -1,0 +1,47 @@
+<application>
+  <settings lcdColor="White" lcdBackground="On" />
+  <!--<widget text="Channel Check" function="AddrCheck"/>
+-->
+  <folder text="DMX Testing">
+    <folder text="Send DMX">
+      <widget text="Channel Check" function="AddrCheck"/>
+      <folder text="Auto Fade">
+        <widget text="All Addr" function="FadeAllAddr"/>
+        <widget text="Range of Addr" function="FadeRangeAddr"/>
+        <widget text="One Addr" function="FadeOneAddr"/>
+      </folder>
+      <folder text="Set Level">
+        <widget text="All Addr" function="SetAllAddr"/>
+        <widget text="Range of Addr" function="SetRangeAddr"/>
+        <widget text="One Addr" function="SetOneAddr"/>
+      </folder>
+    </folder>
+    <folder text="Recieve DMX">
+      <widget text="All Addr" function="RecieveAllAddr"/>
+      <widget text="Range of Addr" function="RecieveRangeAddr"/>
+      <widget text="One Addr" function="RecieveOneAddr"/>
+    </folder>
+  </folder>
+  <folder text="System Info">
+    <widget text="Show Date/Time" function="ShowDateTime" />
+    <widget text="IP Address" function="ShowIPAddress" />
+    <folder text="LCD Color">
+      <widget text="Red" function="LcdRed" />
+      <widget text="Green" function="LcdGreen" />
+      <widget text="Blue" function="LcdBlue" />
+      <widget text="Yellow" function="LcdYellow" />
+      <widget text="Teal" function="LcdTeal" />
+      <widget text="Violet" function="LcdViolet" />
+      <widget text="White" function="LcdOn" />
+      <widget text="Off" function="LcdOff" />
+    </folder>
+    <run text="Run ls">ls</run>
+  </folder>
+  <folder text="Exit">
+    <widget text="Quit" function="DoQuit" />
+    <widget text="Restart" function="DoRestart" />
+    <widget text="Reboot" function="DoReboot" />
+    <widget text="Shutdown" function="DoShutdown" />
+  </folder>
+</application>
+
