@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 RaspberryPiLcdMenu
 ==================
 
@@ -54,3 +55,9 @@ Changes:
 Written by Alan Aufderheide
 
 GPL v3 license, kindly include text above in any redistribution.
+=======
+DMXTester
+=========
+
+A Tester for DMX 
+>>>>>>> 9923fe8d41fa0129aed9f2bf3e11048f353e6d23
