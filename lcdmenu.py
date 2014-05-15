@@ -81,87 +81,6 @@ def validateAddr(addr, change, curp):
     if addr[0] < 0 and addr[1] == 0 and addr[2] == 0:
         addr = [5,1,2]
     return addr
-    
-def AddrCheck():
-    lcd.clear()
-    addr = [0,0,1]
-    firstaddrnum = -1
-    curp = 2
-    curc=10
-    i=1
-    lcd.message('Channel Check\n1st Addr:')
-    updateDMXChan(curc, 1, addr)
-    lcd.cursor()
-    while 1:
-        if lcd.buttonPressed(lcd.SELECT):
-            if firstaddrnum != -1:
-                lcd.clear()
-                secondaddrnum=ConvertAddrtoNum(addr)
-                if secondaddrnum < firstaddrnum:
-                    lcd.clear()
-                    lcd.message('ERROR: 1st Addr is\n> than 2nd Addr')
-                    while 1:
-                        if lcd.buttonPressed(lcd.SELECT):
-                            break
-                    break
-                print(firstaddrnum, secondaddrnum)
-                lcd.noCursor()
-                #lcd.message('Testing Addr:\nUP=+1 DOWN=-1')
-                lcd.message('Testing Addr:')
-                for i in range(1,secondaddrnum+1):
-                    data = array.array('B')
-                    for i in range(1,firstaddrnum):
-                        data.append(0)
-                        i+=1
-                    data.append(255)
-                    print("Chan:"+str(i)+" "+"Frame:"+str(data))
-                    lcd.setCursor(13,0)
-                    lcd.message(i)
-                    #while 1:
-                    #    sleep(.15)
-                    #    if lcd.buttonPressed(lcd.UP):
-                    #        i+=1
-                    #        firstaddrnum+=1
-                    #        break
-                    #    if lcd.buttonPressed(lcd.DOWN):
-                    #        i-=1
-                    #        firstaddrnum-=1
-                    #        break
-                    #    sleep(.15)
-                    client.SendDmx(universe, data, DmxSent)
-                    wrapper.Run()
-                    i+=1
-                    firstaddrnum+=1
-                    sleep(1)
-                    if i==secondaddrnum+1:
-                        for i in range(1,secondaddrnum+2):
-                            data = array.array('B')
-                            data.append(0)
-                            i+=1
-                        client.SendDmx(universe, data, DmxSent)
-                        wrapper.Run()
-                        break
-                break
-            if firstaddrnum == -1:
-                firstaddrnum = ConvertAddrtoNum(addr)
-                lcd.clear()
-                lcd.message('Channel Check\n2nd Addr:')
-                updateDMXChan(curc, 1, addr)
-                curc = 10
-        if lcd.buttonPressed(lcd.UP):
-            addr=validateAddr(addr, 1, curp)
-            updateDMXChan(curc,1, addr)
-        if lcd.buttonPressed(lcd.DOWN):
-            addr=validateAddr(addr, -1, curp)
-            updateDMXChan(curc,1, addr)
-        if lcd.buttonPressed(lcd.LEFT):
-            if curp != 0:
-                curp -=1
-        if lcd.buttonPressed(lcd.RIGHT):
-            if curp != 2:
-                curp +=1
-        lcd.setCursor(curp+curc, 1)
-        sleep(.15)
 
 def DoQuit():
     lcd.clear()
@@ -364,78 +283,87 @@ def ShowIPAddress():
         if lcd.buttonPressed(lcd.LEFT):
             break
         sleep(0.25)
-    
-def FadeAllAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
 
-def FadeRangeAddr():
+def AddrCheck():
     lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
+    addr = [0,0,1]
+    firstaddrnum = -1
+    curp = 2
+    curc=10
+    i=1
+    lcd.message('Channel Check\n1st Addr:')
+    updateDMXChan(curc, 1, addr)
+    lcd.cursor()
     while 1:
+        if lcd.buttonPressed(lcd.SELECT):
+            if firstaddrnum != -1:
+                lcd.clear()
+                secondaddrnum=ConvertAddrtoNum(addr)
+                if secondaddrnum < firstaddrnum:
+                    lcd.clear()
+                    lcd.message('ERROR: 1st Addr is\n> than 2nd Addr')
+                    while 1:
+                        if lcd.buttonPressed(lcd.SELECT):
+                            break
+                    break
+                print(firstaddrnum, secondaddrnum)
+                lcd.noCursor()
+                #lcd.message('Testing Addr:\nUP=+1 DOWN=-1')
+                lcd.message('Testing Addr:')
+                for i in range(1,secondaddrnum+1):
+                    data = array.array('B')
+                    for i in range(1,firstaddrnum):
+                        data.append(0)
+                        i+=1
+                    data.append(255)
+                    print("Chan:"+str(i)+" "+"Frame:"+str(data))
+                    lcd.setCursor(13,0)
+                    lcd.message(i)
+                    #while 1:
+                    #    sleep(.15)
+                    #    if lcd.buttonPressed(lcd.UP):
+                    #        i+=1
+                    #        firstaddrnum+=1
+                    #        break
+                    #    if lcd.buttonPressed(lcd.DOWN):
+                    #        i-=1
+                    #        firstaddrnum-=1
+                    #        break
+                    #    sleep(.15)
+                    client.SendDmx(universe, data, DmxSent)
+                    wrapper.Run()
+                    i+=1
+                    firstaddrnum+=1
+                    sleep(1)
+                    if i==secondaddrnum+1:
+                        for i in range(1,secondaddrnum+2):
+                            data = array.array('B')
+                            data.append(0)
+                            i+=1
+                        client.SendDmx(universe, data, DmxSent)
+                        wrapper.Run()
+                        break
+                break
+            if firstaddrnum == -1:
+                firstaddrnum = ConvertAddrtoNum(addr)
+                lcd.clear()
+                lcd.message('Channel Check\n2nd Addr:')
+                updateDMXChan(curc, 1, addr)
+                curc = 10
+        if lcd.buttonPressed(lcd.UP):
+            addr=validateAddr(addr, 1, curp)
+            updateDMXChan(curc,1, addr)
+        if lcd.buttonPressed(lcd.DOWN):
+            addr=validateAddr(addr, -1, curp)
+            updateDMXChan(curc,1, addr)
         if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def FadeOneAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def SetAllAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def SetRangeAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def SetOneAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def RecieveAllAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def RecieveRangeAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
-
-def RecieveOneAddr():
-    lcd.clear()
-    lcd.message('Not Working\n... Yet :)')
-    while 1:
-        if lcd.buttonPressed(lcd.LEFT):
-            break
-        sleep(0.25)
+            if curp != 0:
+                curp -=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curp != 2:
+                curp +=1
+        lcd.setCursor(curp+curc, 1)
+        sleep(.15)
 
 class CommandToRun:
     def __init__(self, myName, theCommand):

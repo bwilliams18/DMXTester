@@ -2,25 +2,16 @@
   <settings lcdColor="White" lcdBackground="On" />
   <!--<widget text="Channel Check" function="AddrCheck"/>
 -->
-  <folder text="DMX Testing">
+  <folder text="DMX Test">
     <folder text="Send DMX">
-      <widget text="Channel Check" function="AddrCheck"/>
-      <folder text="Auto Fade">
-        <widget text="All Addr" function="FadeAllAddr"/>
-        <widget text="Range of Addr" function="FadeRangeAddr"/>
-        <widget text="One Addr" function="FadeOneAddr"/>
-      </folder>
-      <folder text="Set Level">
-        <widget text="All Addr" function="SetAllAddr"/>
-        <widget text="Range of Addr" function="SetRangeAddr"/>
-        <widget text="One Addr" function="SetOneAddr"/>
-      </folder>
+      <widget text="Channel Check" function="ChanCheck"/>
+      <widget text="Address Check" function="AddrCheck"/>
     </folder>
-    <folder text="Recieve DMX">
-      <widget text="All Addr" function="RecieveAllAddr"/>
-      <widget text="Range of Addr" function="RecieveRangeAddr"/>
-      <widget text="One Addr" function="RecieveOneAddr"/>
-    </folder>
+    <widget text="Recieve DMX" function="RecieveDMX"/>
+  </folder>
+  <widget text="Show Control" function="ShowCtrl"/>
+  <folder text="DMX Settings">
+    <widget text="Patch" function="patch"/>
   </folder>
   <folder text="System Info">
     <widget text="Show Date/Time" function="ShowDateTime" />
