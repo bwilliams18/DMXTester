@@ -4,6 +4,8 @@
 #
 # This provides a menu driven application using the LCD Plates
 # from Adafruit Electronics.
+
+
 import array
 import smbus
 import socket
@@ -11,6 +13,7 @@ import fcntl
 import struct
 import commands
 import os
+import threading
 from string import split
 from time import sleep, strftime, localtime
 from xml.dom.minidom import *
@@ -20,13 +23,16 @@ from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 from ListSelector import ListSelector
 from wifi import Cell, Scheme
 from ola.ClientWrapper import ClientWrapper
+from collections import namedtuple
+
 
 configfile = 'lcdmenu.xml'
 # set DEBUG=1 for print debug statements
 DEBUG = 0
 DISPLAY_ROWS = 2
 DISPLAY_COLS = 16
-universe = 1
+senduniverse = 1
+recieveuniverse = 3
 
 # set busnum param to the correct value for your pi
 lcd = Adafruit_CharLCDPlate(busnum = 1)
@@ -37,13 +43,60 @@ lcd = Adafruit_CharLCDPlate(busnum = 1)
 lcd.begin(DISPLAY_COLS, DISPLAY_ROWS)
 lcd.backlight(lcd.OFF)
 
+
+def __init__(self, time, link, hang, channels):
+    self.time = time
+    self.link = link
+    self.hang = hang
+    self.channels = channels
+
 # commands
+def GetData(data):
+    global recieve
+    recieve=data
+    if stopthrd==1:
+        wrapper.Stop()
+
+def OneToOne():
+    for i in range(0,512):
+        patch[i]=i
+    i+=1
+
 def DmxSent(state):
-  wrapper.Stop()
+    wrapper.Stop()
 
 def ConvertAddrtoNum(addr):
     num = (addr[0]*100) + (addr[1] * 10) + addr[2]
+    return num-1
+
+def ConvertNumtoAddr(num):
+    num+=1
+    addr = [0,0,0]
+    addr[2]=(num%10)
+    num=num-addr[2]
+    addr[1]=(num%100)/10
+    num=num-addr[1]
+    addr[0]=(num%1000)/100
+    return addr
+
+def ConvertPerctoNum(perc):
+    if perc==['F','L']:
+        num=255
+        return num
+    per = ((perc[0]*10) + perc[1])
+    num=((255*per)/100)+1
     return num
+
+def ConvertNumtoPerc(num):
+    if num == 255:
+        perc=['F','L']
+        return perc
+    perc=[0,0]
+    num=int((num*(100.0/255.0)))
+    perc[1]=(num%10)
+    num=num-perc[1]
+    perc[0]=(num%100)/10
+    return perc
 
 def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -53,13 +106,26 @@ def get_ip_address(ifname):
         struct.pack('256s', ifname[:15])
     )[20:24])
 
-def updateDMXChan(startrow, startcol, addr):
-    lcd.setCursor(startrow, startcol)
+def updateAddrDisp(startrow, startcol, addr):
+    lcd.setCursor(startrow-2, startcol)
     lcd.message(str(addr[0])+str(addr[1])+str(addr[2]))
-    lcd.setCursor(startrow+2, startcol)
+    lcd.setCursor(startrow, startcol)
 
+def updatePercDisp(startrow, startcol, perc):
+    lcd.setCursor(startrow-1, startcol)
+    lcd.message(str(perc[0])+str(perc[1]))
+    lcd.setCursor(startrow, startcol)
 
 def validateAddr(addr, change, curp):
+    if addr==[5,1,2] and change == 1:
+        addr=[0,0,1]
+        return addr
+    if addr[0] >= 5 and addr[1] >= 1 and addr[2] >= 2 and change ==1:
+        addr=[0,0,1]
+        return addr
+    if addr==[0,0,1] and change == -1:
+        addr=[5,1,2]
+        return addr
     if curp > 2 or curp < 0:
         return addr
     if change == 1:
@@ -72,15 +138,44 @@ def validateAddr(addr, change, curp):
         if addr[curp] < 0:
             addr=validateAddr(addr, change, curp-1)
             addr[curp]=9
-    if addr[0] >= 5 and addr[1] >= 1 and addr [2] >= 2:
-        addr = [0,0,0]
     if addr[0] > 5:
         addr = [5,1,2]
     if addr[0] >= 5 and addr[1] > 1:
         addr = [5,1,2]
-    if addr[0] < 0 and addr[1] == 0 and addr[2] == 0:
+    if addr[0] >= 5 and addr[1] >= 1 and addr[2] >= 2:
         addr = [5,1,2]
     return addr
+
+def validatePerc(perc, change, curp):
+    if perc[0] == 9 and curp ==0 and change ==1:
+        perc=['F','L']
+        return perc
+    if perc==[9,9] and change ==1:
+        perc=['F','L']
+        return perc
+    if perc==['F','L']:
+        if change==1:
+            perc=[0,0]
+            return perc
+        if change== -1:
+            perc=[9,9]
+            return perc
+    if perc==[0,0] and change==-1:
+        perc=['F','L']
+        return perc
+    if curp > 1 or curp < 0:
+        return perc
+    if change == 1:
+        perc[curp] += 1
+        if perc[curp] > 9:
+            perc=validatePerc(perc, change, curp-1)
+            perc[curp]=0
+    if change == -1:
+        perc[curp] -= 1
+        if perc[curp] < 0:
+            perc=validatePerc(perc, change, curp-1)
+            perc[curp]=9
+    return perc
 
 def DoQuit():
     lcd.clear()
@@ -178,7 +273,7 @@ def ShowDateTime():
         sleep(0.25)
         lcd.home()
         lcd.message(strftime('%a %b %d %Y\n%I:%M:%S %p', localtime()))
-    
+
 def ValidateDateDigit(current, curval):
     # do validation/wrapping
     if current == 0: # Mm
@@ -287,83 +382,296 @@ def ShowIPAddress():
 def AddrCheck():
     lcd.clear()
     addr = [0,0,1]
-    firstaddrnum = -1
+    perc = [0,0]
+    for i in range(1,512):
+        send.append(0)
+        i+=1
     curp = 2
-    curc=10
+    curr = 1
+    curc = 5
     i=1
-    lcd.message('Channel Check\n1st Addr:')
-    updateDMXChan(curc, 1, addr)
+    lcd.message('DMX to Address:\n@:[   ] %:[  ] ')
+    updateAddrDisp(curc, curr, addr)
+    updatePercDisp(12, curr, perc)
+    curc=5
+    lcd.setCursor(curc,curr)
     lcd.cursor()
     while 1:
-        if lcd.buttonPressed(lcd.SELECT):
-            if firstaddrnum != -1:
-                lcd.clear()
-                secondaddrnum=ConvertAddrtoNum(addr)
-                if secondaddrnum < firstaddrnum:
-                    lcd.clear()
-                    lcd.message('ERROR: 1st Addr is\n> than 2nd Addr')
-                    while 1:
-                        if lcd.buttonPressed(lcd.SELECT):
-                            break
-                    break
-                print(firstaddrnum, secondaddrnum)
-                lcd.noCursor()
-                #lcd.message('Testing Addr:\nUP=+1 DOWN=-1')
-                lcd.message('Testing Addr:')
-                for i in range(1,secondaddrnum+1):
-                    data = array.array('B')
-                    for i in range(1,firstaddrnum):
-                        data.append(0)
-                        i+=1
-                    data.append(255)
-                    print("Chan:"+str(i)+" "+"Frame:"+str(data))
-                    lcd.setCursor(13,0)
-                    lcd.message(i)
-                    #while 1:
-                    #    sleep(.15)
-                    #    if lcd.buttonPressed(lcd.UP):
-                    #        i+=1
-                    #        firstaddrnum+=1
-                    #        break
-                    #    if lcd.buttonPressed(lcd.DOWN):
-                    #        i-=1
-                    #        firstaddrnum-=1
-                    #        break
-                    #    sleep(.15)
-                    client.SendDmx(universe, data, DmxSent)
-                    wrapper.Run()
-                    i+=1
-                    firstaddrnum+=1
-                    sleep(1)
-                    if i==secondaddrnum+1:
-                        for i in range(1,secondaddrnum+2):
-                            data = array.array('B')
-                            data.append(0)
-                            i+=1
-                        client.SendDmx(universe, data, DmxSent)
-                        wrapper.Run()
-                        break
-                break
-            if firstaddrnum == -1:
-                firstaddrnum = ConvertAddrtoNum(addr)
-                lcd.clear()
-                lcd.message('Channel Check\n2nd Addr:')
-                updateDMXChan(curc, 1, addr)
-                curc = 10
-        if lcd.buttonPressed(lcd.UP):
-            addr=validateAddr(addr, 1, curp)
-            updateDMXChan(curc,1, addr)
-        if lcd.buttonPressed(lcd.DOWN):
-            addr=validateAddr(addr, -1, curp)
-            updateDMXChan(curc,1, addr)
-        if lcd.buttonPressed(lcd.LEFT):
-            if curp != 0:
-                curp -=1
-        if lcd.buttonPressed(lcd.RIGHT):
-            if curp != 2:
-                curp +=1
-        lcd.setCursor(curp+curc, 1)
         sleep(.15)
+        if lcd.buttonPressed(lcd.SELECT):
+            numaddr=ConvertAddrtoNum(addr)
+            send[numaddr]=ConvertPerctoNum(perc)
+            client.SendDmx(senduniverse, send, DmxSent)
+            wrapper.Run()
+            return
+        if lcd.buttonPressed(lcd.LEFT):
+            if curc==3:
+                curc=12
+                curp=1
+            elif curc==11:
+                curc=5
+                curp=2
+            else:
+                curp-=1
+                curc-=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curc==5:
+                curc=11
+                curp=0
+            elif curc==12:
+                curc=3
+                curp=0
+            else:
+                curp+=1
+                curc+=1
+        if curc < 6:
+            if lcd.buttonPressed(lcd.UP):
+                chan=validateAddr(addr, 1, curp)
+                updateAddrDisp(5, curr, addr)
+            if lcd.buttonPressed(lcd.DOWN):
+                chan=validateAddr(addr, -1, curp)
+                updateAddrDisp(5, curr, addr)
+            lcd.setCursor(curc, curr)
+        if curc >= 11:
+            if lcd.buttonPressed(lcd.UP):
+                perc=validatePerc(perc, 1, curp)
+                updatePercDisp(12, curr, perc)
+            if lcd.buttonPressed(lcd.DOWN):
+                perc=validatePerc(perc, -1, curp)
+                updatePercDisp(12, curr, perc)
+        lcd.setCursor(curc, curr)
+
+def ChanCheck():
+    lcd.clear()
+    chan = [0,0,1]
+    perc = [0,0]
+    for i in range(1,512):
+        send.append(0)
+        i+=1
+    curp = 2
+    curr = 1
+    curc = 5
+    i=1
+    lcd.message('DMX to Channel:\nC:[   ] %:[  ] ')
+    updateAddrDisp(curc, curr, chan)
+    updatePercDisp(12, curr, perc)
+    curc=5
+    lcd.setCursor(curc,curr)
+    lcd.cursor()
+    while 1:
+        sleep(.15)
+        if lcd.buttonPressed(lcd.SELECT):
+            numaddr=ConvertAddrtoNum(chan)
+            send[patch[numaddr]]=ConvertPerctoNum(perc)
+            client.SendDmx(senduniverse, send, DmxSent)
+            wrapper.Run()
+            return
+        if lcd.buttonPressed(lcd.LEFT):
+            if curc==3:
+                curc=12
+                curp=1
+            elif curc==11:
+                curc=5
+                curp=2
+            else:
+                curp-=1
+                curc-=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curc==5:
+                curc=11
+                curp=0
+            elif curc==12:
+                curc=3
+                curp=0
+            else:
+                curp+=1
+                curc+=1
+        if curc < 6:
+            if lcd.buttonPressed(lcd.UP):
+                chan=validateAddr(chan, 1, curp)
+                updateAddrDisp(5, curr, chan)
+            if lcd.buttonPressed(lcd.DOWN):
+                chan=validateAddr(chan, -1, curp)
+                updateAddrDisp(5, curr, chan)
+            lcd.setCursor(curc, curr)
+        if curc >= 11:
+            if lcd.buttonPressed(lcd.UP):
+                perc=validatePerc(perc, 1, curp)
+                updatePercDisp(12, curr, perc)
+            if lcd.buttonPressed(lcd.DOWN):
+                perc=validatePerc(perc, -1, curp)
+                updatePercDisp(12, curr, perc)
+        lcd.setCursor(curc, curr)
+
+def RecieveAddr():
+    lcd.clear()
+    addr = [0,0,1]
+    perc = [0,0]
+    for i in range(1,512):
+        recieve.append(0)
+        i+=1
+    curp = 2 
+    curr = 1
+    curc = 5
+    lcd.message('Recieve Address\n@:[   ] %:[  ]')
+    updateAddrDisp(5, curr, addr)
+    updatePercDisp(12, curr, perc)
+    curc=5
+    lcd.setCursor(curc,curr)
+    lcd.cursor()
+    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetData)
+    wrapthread = threading.Thread(target=wrapper.Run, args=())
+    wrapthread.daemon = True
+    wrapthread.start()
+    while 1:
+        sleep(.15)
+        if lcd.buttonPressed(lcd.SELECT):
+            return
+        if lcd.buttonPressed(lcd.LEFT):
+            if curc==3:
+                curc=5
+                curp=2
+            else:
+                curp-=1
+                curc-=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curc==5:
+                curc=3
+                curp=0
+            else:
+                curp+=1
+                curc+=1
+        if lcd.buttonPressed(lcd.UP):
+            chan=validateAddr(addr, 1, curp)
+            updateAddrDisp(5, curr, addr)
+        if lcd.buttonPressed(lcd.DOWN):
+            chan=validateAddr(addr, -1, curp)
+            updateAddrDisp(5, curr, addr)
+        lcd.setCursor(curc, curr)
+        perc=ConvertNumtoPerc(recieve[ConvertAddrtoNum(addr)])
+        updatePercDisp(12, curr, perc)
+        lcd.setCursor(curc, curr)
+
+def RecieveChan():
+    lcd.clear()
+    chan = [0,0,1]
+    perc = [0,0]
+    for i in range(1,512):
+        recieve.append(0)
+        i+=1
+    curp = 2 
+    curr = 1
+    curc = 5
+    lcd.message('Recieve Channel\nC:[   ] %:[  ]')
+    updateAddrDisp(5, curr, chan)
+    updatePercDisp(12, curr, perc)
+    curc=5
+    lcd.setCursor(curc,curr)
+    lcd.cursor()
+    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetData)
+    wrapthread = threading.Thread(target=wrapper.Run, args=())
+    wrapthread.daemon = True
+    wrapthread.start()
+    while 1:
+        sleep(.15)
+        if lcd.buttonPressed(lcd.SELECT):
+            return
+        if lcd.buttonPressed(lcd.LEFT):
+            if curc==3:
+                curc=5
+                curp=2
+            else:
+                curp-=1
+                curc-=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curc==5:
+                curc=3
+                curp=0
+            else:
+                curp+=1
+                curc+=1
+        if lcd.buttonPressed(lcd.UP):
+            chan=validateAddr(chan, 1, curp)
+            updateAddrDisp(5, curr, chan)
+        if lcd.buttonPressed(lcd.DOWN):
+            chan=validateAddr(chan, -1, curp)
+            updateAddrDisp(5, curr, chan)
+        lcd.setCursor(curc, curr)
+        perc=ConvertNumtoPerc(recieve[ConvertAddrtoNum(patch[addr])])
+        updatePercDisp(12, curr, perc)
+        lcd.setCursor(curc, curr)
+
+def NotWorking():
+    lcd.clear()
+    lcd.message("Yeah...This function\nDoesn't Work")
+    while 1:
+        sleep(.15)
+        if lcd.buttonPressed(lcd.LEFT) or lcd.buttonPressed(lcd.SELECT):
+            return
+
+def Patch():
+    lcd.clear()
+    chan = [0,0,1]
+    addr = [0,0,1]
+    curp = 2
+    curr = 1
+    curc = 5
+    lcd.message('DMX Patch\nC:[   ] @:[   ]Q')
+    updateAddrDisp(curc, curr, chan)
+    updateAddrDisp(13,curr,addr)
+    lcd.setCursor(curc,curr)
+    lcd.cursor()
+    while 1:
+        sleep(.15)
+        if lcd.buttonPressed(lcd.SELECT):
+            patch[ConvertAddrtoNum(chan)]=ConvertAddrtoNum(addr)
+            if curc == 15:
+                return
+        if lcd.buttonPressed(lcd.LEFT):
+            if curc==3:
+                curc=15
+                curp=2
+            elif curc==11:
+                curc=5
+                curp=2
+            elif curc==15:
+                curc=13
+                curp=2
+            else:
+                curp-=1
+                curc-=1
+        if lcd.buttonPressed(lcd.RIGHT):
+            if curc==5:
+                curc=11
+                curp=0
+            elif curc==13:
+                curc=15
+                curp=0
+            elif curc==15:
+                curc=3
+                curp=0
+            else:
+                curp+=1
+                curc+=1
+        if curc < 6:
+            if lcd.buttonPressed(lcd.UP):
+                chan=validateAddr(chan, 1, curp)
+                updateAddrDisp(5, curr, chan)
+            if lcd.buttonPressed(lcd.DOWN):
+                chan=validateAddr(chan, -1, curp)
+                updateAddrDisp(5, curr, chan)
+            addr=ConvertNumtoAddr(patch[ConvertAddrtoNum(chan)])
+            updateAddrDisp(13, curr,addr)
+            lcd.setCursor(curc, curr)
+        if curc >= 11 and curc !=15:
+            if lcd.buttonPressed(lcd.UP):
+                addr=validateAddr(addr, 1, curp)
+                updateAddrDisp(13, curr, addr)
+            if lcd.buttonPressed(lcd.DOWN):
+                addr=validateAddr(addr, -1, curp)
+                updateAddrDisp(13, curr, addr)
+        lcd.setCursor(curc, curr) 
+
 
 class CommandToRun:
     def __init__(self, myName, theCommand):
@@ -380,7 +688,7 @@ class CommandToRun:
                         break
                     sleep(0.25)
                 lcd.clear()
-                lcd.message(self.clist[i-1]+'\n'+self.clist[i])          
+                lcd.message(self.clist[i-1]+'\n'+self.clist[i])
                 sleep(0.5)
         while 1:
             if lcd.buttonPressed(lcd.LEFT):
@@ -390,7 +698,7 @@ class Widget:
     def __init__(self, myName, myFunction):
         self.text = myName
         self.function = myFunction
-        
+
 class Folder:
     def __init__(self, myName, myParent):
         self.text = myName
@@ -547,6 +855,9 @@ class Display:
 wrapper = ClientWrapper()
 client = wrapper.Client()
 uiItems = Folder('root','')
+send = array.array('B')
+recieve = array.array('B')
+stopthrd = 0
 
 dom = parse(configfile) # parse an XML file by name
 
@@ -556,6 +867,10 @@ ProcessNode(top, uiItems)
 
 display = Display(uiItems)
 display.display()
+
+patch = range(512)
+
+OneToOne()
 
 if DEBUG:
     print('start while')

@@ -2,16 +2,19 @@
   <settings lcdColor="White" lcdBackground="On" />
   <!--<widget text="Channel Check" function="AddrCheck"/>
 -->
-  <folder text="DMX Test">
-    <folder text="Send DMX">
-      <widget text="Channel Check" function="ChanCheck"/>
-      <widget text="Address Check" function="AddrCheck"/>
-    </folder>
-    <widget text="Recieve DMX" function="RecieveDMX"/>
+  <folder text="Send DMX">
+	  <widget text="Send to Address" function="AddrCheck"/>
+	  <widget text="Send to Channel" function="ChanCheck"/>
   </folder>
+  <folder text="Recieve DMX">
+    <widget text="Recieve Address" function="RecieveAddr"/>
+    <widget text="Recieve Channel" function="RecieveChan"/>
+  </folder>
+  <widget text="Program Show" function="ShowProg"/>
   <widget text="Show Control" function="ShowCtrl"/>
   <folder text="DMX Settings">
-    <widget text="Patch" function="patch"/>
+	  <widget text="Patch" function="Patch"/>
+	  <widget text="Park" function="Park"/>
   </folder>
   <folder text="System Info">
     <widget text="Show Date/Time" function="ShowDateTime" />
@@ -35,4 +38,3 @@
     <widget text="Shutdown" function="DoShutdown" />
   </folder>
 </application>
-
