@@ -54,8 +54,10 @@ def __init__(self, time, link, hang, channels):
 # commands
 def GetDMX(data):
     global recieve
+    global stopthrd
     recieve=data
     if stopthrd==1:
+        stopthrd=0
         wrapper.Stop()
 
 def SendDMX():
@@ -63,8 +65,6 @@ def SendDMX():
     global send
     data=send
     wrapper.Client().SendDmx(1, data, DmxSent)
-    if stopthrd==1:
-        wrapper.Stop()
 
 def OneToOne():
     for i in range(0,512):
@@ -72,7 +72,10 @@ def OneToOne():
     i+=1
 
 def DmxSent(state):
-    wrapper.Stop()
+    global stopthrd
+    if stopthrd==1:
+        stopthrd=0
+        wrapper.Stop()
 
 def ConvertAddrtoNum(addr):
     num = (addr[0]*100) + (addr[1] * 10) + addr[2]
@@ -390,6 +393,7 @@ def ShowIPAddress():
 
 def AddrCheck():
     global send
+    global stopthrd
     lcd.clear()
     addr = [0,0,1]
     perc = [0,0]
@@ -416,7 +420,6 @@ def AddrCheck():
         send[patch[numaddr]]=ConvertPerctoNum(perc)
         if lcd.buttonPressed(lcd.SELECT):
             stopthrd = 1
-            wrapthread.join()
             return
         if lcd.buttonPressed(lcd.LEFT):
             if curc==3:
@@ -457,6 +460,7 @@ def AddrCheck():
 
 def ChanCheck():
     global send
+    global stopthrd
     lcd.clear()
     chan = [0,0,1]
     perc = [0,0]
@@ -523,6 +527,7 @@ def ChanCheck():
         lcd.setCursor(curc, curr)
 
 def RecieveAddr():
+    global stopthrd
     lcd.clear()
     addr = [0,0,1]
     perc = [0,0]
@@ -574,6 +579,7 @@ def RecieveAddr():
         lcd.setCursor(curc, curr)
 
 def RecieveChan():
+    global stopthrd
     lcd.clear()
     chan = [0,0,1]
     perc = [0,0]
