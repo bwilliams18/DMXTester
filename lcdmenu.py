@@ -33,6 +33,7 @@ DISPLAY_ROWS = 2
 DISPLAY_COLS = 16
 senduniverse = 1
 recieveuniverse = 3
+TICK_INTERVAL = 100  # in ms
 
 # set busnum param to the correct value for your pi
 lcd = Adafruit_CharLCDPlate(busnum = 1)
@@ -51,9 +52,17 @@ def __init__(self, time, link, hang, channels):
     self.channels = channels
 
 # commands
-def GetData(data):
+def GetDMX(data):
     global recieve
     recieve=data
+    if stopthrd==1:
+        wrapper.Stop()
+
+def SendDMX():
+    wrapper.AddEvent(TICK_INTERVAL, SendDMX)
+    global send
+    data=send
+    wrapper.Client().SendDmx(1, data, DmxSent)
     if stopthrd==1:
         wrapper.Stop()
 
@@ -380,6 +389,7 @@ def ShowIPAddress():
         sleep(0.25)
 
 def AddrCheck():
+    global send
     lcd.clear()
     addr = [0,0,1]
     perc = [0,0]
@@ -396,13 +406,17 @@ def AddrCheck():
     curc=5
     lcd.setCursor(curc,curr)
     lcd.cursor()
+    wrapper.AddEvent(TICK_INTERVAL, SendDMX)
+    wrapthread = threading.Thread(target=wrapper.Run, args=())
+    wrapthread.daemon = True
+    wrapthread.start()
     while 1:
         sleep(.15)
+        numaddr=ConvertAddrtoNum(addr)
+        send[patch[numaddr]]=ConvertPerctoNum(perc)
         if lcd.buttonPressed(lcd.SELECT):
-            numaddr=ConvertAddrtoNum(addr)
-            send[numaddr]=ConvertPerctoNum(perc)
-            client.SendDmx(senduniverse, send, DmxSent)
-            wrapper.Run()
+            stopthrd = 1
+            wrapthread.join()
             return
         if lcd.buttonPressed(lcd.LEFT):
             if curc==3:
@@ -442,6 +456,7 @@ def AddrCheck():
         lcd.setCursor(curc, curr)
 
 def ChanCheck():
+    global send
     lcd.clear()
     chan = [0,0,1]
     perc = [0,0]
@@ -458,13 +473,17 @@ def ChanCheck():
     curc=5
     lcd.setCursor(curc,curr)
     lcd.cursor()
+    wrapper.AddEvent(TICK_INTERVAL, SendDMX)
+    wrapthread = threading.Thread(target=wrapper.Run, args=())
+    wrapthread.daemon = True
+    wrapthread.start()
     while 1:
         sleep(.15)
+        numaddr=ConvertAddrtoNum(chan)
+        send[patch[numaddr]]=ConvertPerctoNum(perc)
         if lcd.buttonPressed(lcd.SELECT):
-            numaddr=ConvertAddrtoNum(chan)
-            send[patch[numaddr]]=ConvertPerctoNum(perc)
-            client.SendDmx(senduniverse, send, DmxSent)
-            wrapper.Run()
+            stopthrd = 1
+            wrapthread.join()
             return
         if lcd.buttonPressed(lcd.LEFT):
             if curc==3:
@@ -519,13 +538,15 @@ def RecieveAddr():
     curc=5
     lcd.setCursor(curc,curr)
     lcd.cursor()
-    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetData)
+    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetDMX)
     wrapthread = threading.Thread(target=wrapper.Run, args=())
     wrapthread.daemon = True
     wrapthread.start()
     while 1:
         sleep(.15)
         if lcd.buttonPressed(lcd.SELECT):
+            stopthrd = 1
+            wrapthread.join()
             return
         if lcd.buttonPressed(lcd.LEFT):
             if curc==3:
@@ -568,13 +589,15 @@ def RecieveChan():
     curc=5
     lcd.setCursor(curc,curr)
     lcd.cursor()
-    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetData)
+    client.RegisterUniverse(recieveuniverse, client.REGISTER, GetDMX)
     wrapthread = threading.Thread(target=wrapper.Run, args=())
     wrapthread.daemon = True
     wrapthread.start()
     while 1:
         sleep(.15)
         if lcd.buttonPressed(lcd.SELECT):
+            stopthrd = 1
+            wrapthread.join()
             return
         if lcd.buttonPressed(lcd.LEFT):
             if curc==3:

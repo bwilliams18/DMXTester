@@ -20,6 +20,7 @@ def SendDMXFrame():
   global loop_count
   data.append(loop_count % 255)
   loop_count += 1
+  print(str(loop_count)+str(loop_count % 255))
 
   # send
   wrapper.Client().SendDmx(1, data, DmxSent)
@@ -28,3 +29,4 @@ def SendDMXFrame():
 wrapper = ClientWrapper()
 wrapper.AddEvent(TICK_INTERVAL, SendDMXFrame)
 wrapper.Run()
+print('get here?')
